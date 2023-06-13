@@ -129,24 +129,35 @@ plist holding contextual information."
      ;; footnotes must have spurious <p> tags removed or they will not work
      (replace-regexp-in-string "</?p.*>" "" fn-data))))
 
+(defun ignore-roam-none-blog-dirs (path)
+  "ignore any thing that is out of the blog scoope"
+  (let ((loc (org-roam-node-file (org-roam-node-from-id (car path)))))
+    (if (not (cl-search "blog" loc))
+        t
+      nil)))
+
+
 (defun org-tufte-maybe-margin-note-link (link desc info)
   "Render LINK as a margin note if it begins with `mn:'.
 For example, `[[mn:1][this is some text]]' is margin note 1 that
 will show \"this is some text\" in the margin.
-
 If it does not, it will be passed onto the original function in
 order to be handled properly. DESC is the description part of the
 link. INFO is a plist holding contextual information."
   (let ((path (split-string (org-element-property :path link) ":")))
-    (if (and (string= (org-element-property :type link) "fuzzy")
-             (string= (car path) "mn"))
-        (format
-         (concat "<label for=\"%s\" class=\"margin-toggle\">&#8853;</label>"
-                 "<input type=\"checkbox\" id=\"%s\" class=\"margin-toggle\"/>"
-                 "<span class=\"marginnote\">%s</span>")
-         (cadr path) (cadr path)
-         (replace-regexp-in-string "</?p.*>" "" desc))
-      (org-html-link link desc info))))
+    (if (not  (ignore-errors (ignore-roam-none-blog-dirs path)))
+        (if (and (string= (org-element-property :type link) "fuzzy")
+                 (string= (car path) "mn"))
+            (format
+             (concat "<label for=\"%s\" class=\"margin-toggle\">&#8853;</label>"
+                     "<input type=\"checkbox\" id=\"%s\" class=\"margin-toggle\"/>"
+                     "<span class=\"marginnote\">%s</span>")
+             (cadr path) (cadr path)
+             (replace-regexp-in-string "</?p.*>" "" desc))
+          (org-html-link link desc info))
+      (org-html-plain-text desc info))))
+
+
 
 (defun org-tufte-src-block (src-block contents info)
   "Transcode SRC-BLOCK element into Tufte HTML format.
